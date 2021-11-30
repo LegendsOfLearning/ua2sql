@@ -11,24 +11,25 @@ import requests
 from requests.auth import HTTPBasicAuth
 from sqlalchemy import create_engine, MetaData, Table, Integer, DateTime, String, Column, select, BigInteger, Numeric
 from sqlalchemy.dialects import postgresql
+from urllib.parse import urlparse, urlunparse
 
 if len(sys.argv) < 2:
     print('please provide path to configuration file. see README.md for specs.')
     exit(1)
 
-CONFIG = {}
+CONFIG = {
+    'database_url': os.getenv('DATABASE_URL'),
+    'unity_project_id': os.getenv('UNITY_PROJECT_ID'),
+    'unity_export_api_key': os.getenv('UNITY_API_KEY'),
+    'local_collection_path': sys.argv[1],
+    'backup_collection_path': os.getenv('UA_BACKUP_COLLECTION_PATH')
+}
 
-try:
-    with open(sys.argv[1]) as f:
-        CONFIG = json.load(f)
-except:
-    print('failed to read or parse config file: ' + sys.argv[1])
-    exit(1)
 
-if not CONFIG['user'] or not CONFIG['password'] or not CONFIG['postgres_server'] \
-        or not CONFIG['database'] or not CONFIG['local_collection_path'] \
-        or not CONFIG['unity_project_id'] or not CONFIG['unity_export_api_key']:
-    print("missing parameter in config.json. see docs.")
+if not CONFIG['database_url'] \
+   or not CONFIG['local_collection_path'] \
+   or not CONFIG['unity_project_id'] or not CONFIG['unity_export_api_key']:
+    print("missing env variablees. see docs.")
     exit(1)
 
 # figure out home directory if necessary
@@ -85,8 +86,7 @@ transaction_table = Table('transaction', metadata,
                           Column('receipt', postgresql.JSONB)
                           )
 
-engine = create_engine('postgresql+psycopg2://' + CONFIG['user'] + ':' + CONFIG['password'] + '@'
-                       + CONFIG['postgres_server'] + '/' + CONFIG['database'])
+engine = create_engine(urlunparse(urlparse(CONFIG['database_url'])._replace(scheme='postgresql+psycopg2')))
 conn = engine.connect()
 metadata.create_all(engine)
 

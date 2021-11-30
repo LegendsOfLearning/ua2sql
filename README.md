@@ -3,7 +3,7 @@ Python program used to convert Unity Analytics raw data export into rows in Post
 
 Usage:
 
-    python ua2sql.py <path to config file>
+    python ua2sql.py <path to local dump cache>
 
 This program does the following:
 
@@ -12,18 +12,12 @@ This program does the following:
 3. (Optional) Copies collected raw data into a backup location for long term storage. This location is specified via `backup_collection_path`.
 4. Deletes the raw dumps stored locally to keep things clean.
 
-The configuration file must be a valid `json` file containing these parameters:
+To make this friendly with running this in a container, we use environmental variables:
 
-    {
-      "postgres_server": "<name or ip>",
-      "database": "<db name>",
-      "user": "<db user with insert permissions>",
-      "password": "<db user pwd>",
-      "local_collection_path": "<local temp file storage path>",
-      "backup_collection_path": "<long term backup path>",
-      "unity_project_id":  "<unity project id>",
-      "unity_export_api_key": "<unity api key>"
-    }
+  - `DATABASE_URL` url with database credentials
+  - `UNITY_PROJECT_ID` unity project id
+  - `UNITY_API_KEY` unity export api key
+  - `UA_BACKUP_COLLECTION_PATH` (optional) long term backup path
 
 On the PostgreSQL side this program will create four tables. One table each for `appStart`, `custom`, and `transaction` data streams. These map one-to-one with the data Unity reports. Finally, the program makes a `jobId` table which is used to track the previous job GUID for each data stream type to continue from the last time the program was run.
 
