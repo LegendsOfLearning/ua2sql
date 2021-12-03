@@ -34,6 +34,8 @@ if not CONFIG['database_url'] \
 
 # figure out home directory if necessary
 CONFIG['local_collection_path'] = os.path.expanduser(CONFIG['local_collection_path'])
+CONFIG['parsed_database_url'] = urlparse(CONFIG['database_url'])
+CONFIG['database_url'] = urlunparse(CONFIG['parsed_database_url']._replace(scheme='postgresql+psycopg2'))
 
 metadata = MetaData()
 
@@ -86,7 +88,7 @@ transaction_table = Table('transaction', metadata,
                           Column('receipt', postgresql.JSONB)
                           )
 
-engine = create_engine(urlunparse(urlparse(CONFIG['database_url'])._replace(scheme='postgresql+psycopg2')))
+engine = create_engine(CONFIG['database_url'])
 conn = engine.connect()
 metadata.create_all(engine)
 
@@ -280,7 +282,7 @@ def process_raw_dump(job_type, table, local_dump_directory, remote_dump_director
 
 print('')
 print(str(datetime.datetime.now()))
-print('*** STARTING COLLECTION / INGESTION JOB FOR DB [' + CONFIG['database'] + '] ***')
+print('*** STARTING COLLECTION / INGESTION JOB FOR DB [' + CONFIG['parsed_database_url'].path + '] ***')
 
 # get rid of any existing file cache in case something failed in the previous run
 remove_files_in_directory(CONFIG['local_collection_path'])
