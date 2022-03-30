@@ -32,6 +32,12 @@ if not CONFIG['database_url'] \
     print("missing env variablees. see docs.")
     exit(1)
 
+
+print('')
+print(str(datetime.datetime.now()))
+print('*** STARTING COLLECTION / INGESTION JOB FOR DB [' + CONFIG['parsed_database_url'].path + '] ***')
+
+
 # figure out home directory if necessary
 CONFIG['local_collection_path'] = os.path.expanduser(CONFIG['local_collection_path'])
 CONFIG['parsed_database_url'] = urlparse(CONFIG['database_url'])
@@ -88,8 +94,11 @@ transaction_table = Table('transaction', metadata,
                           Column('receipt', postgresql.JSONB)
                           )
 
+print("starting DB client")
 engine = create_engine(CONFIG['database_url'])
 conn = engine.connect()
+
+print("building metadata")
 metadata.create_all(engine)
 
 
@@ -280,11 +289,7 @@ def process_raw_dump(job_type, table, local_dump_directory, remote_dump_director
     conn.execute(job_id_table.insert().values(ts=datetime.datetime.utcnow(), jobId=jobId, jobType=job_type))
 
 
-print('')
-print(str(datetime.datetime.now()))
-print('*** STARTING COLLECTION / INGESTION JOB FOR DB [' + CONFIG['parsed_database_url'].path + '] ***')
-
-# get rid of any existing file cache in case something failed in the previous run
+print("getting rid of any existing file cache in case something failed in the previous run")
 remove_files_in_directory(CONFIG['local_collection_path'])
 
 try:
