@@ -340,8 +340,14 @@ try:
 except:
     backup_path = None
 
-process_raw_dump('appStart', app_start_table, CONFIG['app_start_job_id'], CONFIG['local_collection_path'], backup_path)
-process_raw_dump('custom', custom_table, CONFIG['custom_job_id'], CONFIG['local_collection_path'], backup_path)
-process_raw_dump('transaction', transaction_table, CONFIG['transaction_job_id'], CONFIG['local_collection_path'], backup_path)
+
+if CONFIG['custom_job_id'] == JOB_NOT_SPECIFIED and CONFIG['transaction_job_id'] == JOB_NOT_SPECIFIED:
+    process_raw_dump('appStart', app_start_table, CONFIG['app_start_job_id'], CONFIG['local_collection_path'], backup_path)
+
+if CONFIG['app_start_job_id'] == JOB_NOT_SPECIFIED and CONFIG['transaction_job_id'] == JOB_NOT_SPECIFIED:
+    process_raw_dump('custom', custom_table, CONFIG['custom_job_id'], CONFIG['local_collection_path'], backup_path)
+
+if CONFIG['custom_job_id'] == JOB_NOT_SPECIFIED and CONFIG['app_start_job_id'] == JOB_NOT_SPECIFIED:
+    process_raw_dump('transaction', transaction_table, CONFIG['transaction_job_id'], CONFIG['local_collection_path'], backup_path)
 
 print('*** COMPLETE ***')
