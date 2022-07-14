@@ -17,12 +17,17 @@ if len(sys.argv) < 2:
     print('please provide path to configuration file. see README.md for specs.')
     exit(1)
 
+JOB_NOT_SPECIFIED = object()
+
 CONFIG = {
     'database_url': os.getenv('DATABASE_URL'),
     'unity_project_id': os.getenv('UNITY_PROJECT_ID'),
     'unity_export_api_key': os.getenv('UNITY_API_KEY'),
     'local_collection_path': sys.argv[1],
-    'backup_collection_path': os.getenv('UA_BACKUP_COLLECTION_PATH')
+    'backup_collection_path': os.getenv('UA_BACKUP_COLLECTION_PATH'),
+    'app_start_job_id': os.getenv('APP_START_JOB_ID', JOB_NOT_SPECIFIED),
+    'custom_job_id': os.getenv('CUSTOM_JOB_ID', JOB_NOT_SPECIFIED),
+    'transaction_job_id': os.getenv('TRANSACTION_JOB_ID', JOB_NOT_SPECIFIED)
 }
 
 
@@ -284,7 +289,7 @@ def insert_data_into_database(table, dump_directory):
 
 
 # ties it all together - downloads a dump, backs it up, and inserts it into the database
-def process_raw_dump(job_type, table, local_dump_directory, remote_dump_directory_root):
+def process_raw_dump(job_type, table, resume_job_id, local_dump_directory, remote_dump_directory_root):
     print('collector: starting collection for job: ' + job_type)
 
     today = datetime.date.today()
@@ -292,18 +297,22 @@ def process_raw_dump(job_type, table, local_dump_directory, remote_dump_director
     end_date = str(today)
     current_job_id = find_current_job_id(CONFIG['unity_project_id'], CONFIG['unity_export_api_key'], job_type, end_date)
 
-    if current_job_id is None:
-        continuationJobId = find_previous_job_id(job_type)
-        jobId = request_raw_analytics_dump(CONFIG['unity_project_id'],
-                                           CONFIG['unity_export_api_key'],
-                                           start_date,
-                                           end_date,
-                                           'json', job_type,
-                                           continuationJobId)
-        print('started jobId: ' + jobId)
+    if resume_job_id is JOB_NOT_SPECIFIED:
+        if current_job_id is None:
+            continuationJobId = find_previous_job_id(job_type)
+            jobId = request_raw_analytics_dump(CONFIG['unity_project_id'],
+                                               CONFIG['unity_export_api_key'],
+                                               start_date,
+                                               end_date,
+                                               'json', job_type,
+                                               continuationJobId)
+            print('started jobId: ' + jobId)
+        else:
+            jobId = current_job_id
+            print('waiting for jobId: ' + jobId)
     else:
-        jobId = current_job_id
-        print('waiting for jobId: ' + jobId)
+        jobId = resume_job_id
+        print('force resuming and waiting for jobId: ' + jobId)
 
     while not is_raw_analytics_dump_ready(CONFIG['unity_project_id'],
                                           CONFIG['unity_export_api_key'], jobId):
@@ -331,8 +340,8 @@ try:
 except:
     backup_path = None
 
-process_raw_dump('appStart', app_start_table, CONFIG['local_collection_path'], backup_path)
-process_raw_dump('custom', custom_table, CONFIG['local_collection_path'], backup_path)
-process_raw_dump('transaction', transaction_table, CONFIG['local_collection_path'], backup_path)
+process_raw_dump('appStart', app_start_table, CONFIG['app_start_job_id'], CONFIG['local_collection_path'], backup_path)
+process_raw_dump('custom', custom_table, CONFIG['custom_job_id'], CONFIG['local_collection_path'], backup_path)
+process_raw_dump('transaction', transaction_table, CONFIG['transaction_job_id'], CONFIG['local_collection_path'], backup_path)
 
 print('*** COMPLETE ***')
