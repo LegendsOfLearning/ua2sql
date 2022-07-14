@@ -35,13 +35,15 @@ if not CONFIG['database_url'] \
 
 print('')
 print(str(datetime.datetime.now()))
-print('*** STARTING COLLECTION / INGESTION JOB FOR DB [' + CONFIG['parsed_database_url'].path + '] ***')
+print('*** STARTING COLLECTION / INGESTION JOB ***')
 
 
 # figure out home directory if necessary
 CONFIG['local_collection_path'] = os.path.expanduser(CONFIG['local_collection_path'])
 CONFIG['parsed_database_url'] = urlparse(CONFIG['database_url'])
 CONFIG['database_url'] = urlunparse(CONFIG['parsed_database_url']._replace(scheme='postgresql+psycopg2'))
+
+print('*** FOR DB [' + CONFIG['parsed_database_url'].path + '] ***')
 
 metadata = MetaData()
 
