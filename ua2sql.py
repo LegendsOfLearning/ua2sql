@@ -189,6 +189,30 @@ def find_previous_job_id(job_type):
     return result['jobId']
 
 
+def to_date_str(unity_timestamp):
+    return str(datetime.datetime.strptime(unity_timestamp.split('T')[0], '%Y-%m-%d').date())
+
+
+def find_current_job_id(unity_project_id, unity_api_key, job_type, end_date):
+    uri = 'https://analytics.cloud.unity3d.com/api/v2/projects/' + unity_project_id + '/rawdataexports'
+    r = requests.get(uri, auth=HTTPBasicAuth(unity_project_id, unity_api_key))
+    if r.status_code != 200:
+        return None
+
+    found_jobs = [
+        job
+        for job in r.json()
+        if job['request']['dataset'] == job_type and
+           to_date_str(job['request']['endDate']) == end_date
+    ]
+    found_jobs.sort(key=lambda job: job['createdAt'], reverse=True)
+
+    if len(found_jobs) > 0:
+        return found_jobs[0]['id']
+    else:
+        return None
+
+
 # removes all files in a directory. does not recurse.
 def remove_files_in_directory(path):
     for filename in os.listdir(path):
@@ -262,16 +286,24 @@ def insert_data_into_database(table, dump_directory):
 # ties it all together - downloads a dump, backs it up, and inserts it into the database
 def process_raw_dump(job_type, table, local_dump_directory, remote_dump_directory_root):
     print('collector: starting collection for job: ' + job_type)
-    continuationJobId = find_previous_job_id(job_type)
 
     today = datetime.date.today()
-    jobId = request_raw_analytics_dump(CONFIG['unity_project_id'],
-                                       CONFIG['unity_export_api_key'],
-                                       str(today - datetime.timedelta(days=30)), str(today),
-                                       'json', job_type,
-                                       continuationJobId)
+    start_date = str(today - datetime.timedelta(days=30))
+    end_date = str(today)
+    current_job_id = find_current_job_id(CONFIG['unity_project_id'], CONFIG['unity_export_api_key'], job_type, end_date)
 
-    print('started jobId: ' + jobId)
+    if current_job_id is None:
+        continuationJobId = find_previous_job_id(job_type)
+        jobId = request_raw_analytics_dump(CONFIG['unity_project_id'],
+                                           CONFIG['unity_export_api_key'],
+                                           start_date,
+                                           end_date,
+                                           'json', job_type,
+                                           continuationJobId)
+        print('started jobId: ' + jobId)
+    else:
+        jobId = current_job_id
+        print('waiting for jobId: ' + jobId)
 
     while not is_raw_analytics_dump_ready(CONFIG['unity_project_id'],
                                           CONFIG['unity_export_api_key'], jobId):
